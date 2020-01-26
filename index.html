@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Permit Review</title>
+    <link href="assets/favicon.ico" rel="icon" >
+    <link rel="stylesheet" href="css/main.css"> 
+      <link rel="stylesheet" href="js/dist/my-theme/main.css">
+    <script src="https://js.arcgis.com/4.11/"></script>
+    <script src="js/main.js"></script>
+	<!-- Global site tag (gtag.js) - Google Analytics -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=UA-72607582-16"></script>
+	<script>
+	  window.dataLayer = window.dataLayer || [];
+	  function gtag(){dataLayer.push(arguments);}
+	  gtag('js', new Date());
+
+	  gtag('config', 'UA-72607582-16');
+	</script>
+  </head>
+  <body>
+      <div id="viewDiv"></div>
+        <div id="bottombar">
+        <button
+        class="action-button esri-icon-minus"
+        id="distanceButton"
+        type="button"
+        title="Measure Distance"
+        ></button>
+        <button
+        class="action-button esri-icon-polygon"
+        id="areaButton"
+        type="button"
+        title="Measure Area"
+        ></button>
+        </div>
+        <div 
+             id = "scaleposition">
+        </div>
+    </body>
+</html>
