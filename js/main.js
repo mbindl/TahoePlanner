@@ -122,7 +122,7 @@
               allPlaceholder: "Address or APN",
               locationEnabled: false,
               includeDefaultSources: false,
-              popupEnabled: false,
+              popupEnabled: true,
               sources: [
                 {
                   layer: parcels,
