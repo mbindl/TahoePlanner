@@ -108,23 +108,31 @@
               zoom: 10
             });
         
-                // cancer rate feature layer
+        // 1940 aerial image tile layer
         var layer1940 = new TileLayer({
-          url: "https://maps.trpa.org/server/rest/services/1940_Imagery/MapServer/0",
+          url: "https://maps.trpa.org/server/rest/services/1940_Imagery/MapServer",
           title : "1940",
           visible: true
         }); 
           
-        // nitrate rate feature layer
+        // parcel feature layer
         var layerParcels = new FeatureLayer({
           url: "https://maps.trpa.org/server/rest/services/Parcels/MapServer/0",
           title : "Parcels",
           visible: true
+        });
+          
+        // zoning feature layer
+        var layerZoning = new FeatureLayer({
+          url: "https://maps.trpa.org/server/rest/services/Zoning/MapServer",
+          title : "Zoning",
+          visible: true
         }); 
-    
         
         map.add(layer1940);
+        map.add(layerZoning)
         map.add(layerParcels);
+        
 
         // add the toolbar for the measurement widgets
         view.ui.add("toolbarDiv", "bottom-right");
