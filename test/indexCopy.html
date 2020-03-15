@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <title>Tahoe Planner</title>
+
+    <style>
+      html,
+      body,
+      #viewDiv {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+/*
+      #toolbarDiv {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        cursor: default;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+      }
+*/
+
+      #infoDiv {
+        position: absolute;
+        top: 15px;
+        left: 60px;
+      }
+      #infoDiv input {
+        border: none;
+        box-shadow: rgba(0, 0, 0, 0.3) 0px 1px 2px;
+      }
+
+      .esri-widget--button.active,
+      .esri-widget--button.active:hover,
+      .esri-widget--button.active:focus {
+        cursor: default;
+        background-color: #999696;
+      }
+      .esri-widget--button.active path,
+      .esri-widget--button.active:hover path,
+      .esri-widget--button.active:focus path {
+        fill: #e4e4e4;
+      }
+    </style>
+
+    <link
+      rel="stylesheet"
+      href="https://js.arcgis.com/4.13/esri/themes/light/main.css"
+    />
+    <script src="https://js.arcgis.com/4.13/"></script>
+
+    <script>
+      require([
+        "esri/config",
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/layers/TileLayer",
+        "esri/layers/FeatureLayer",
+        "esri/widgets/Measurement",
+        "esri/widgets/Expand",
+        "esri/widgets/BasemapGallery",
+        "esri/widgets/BasemapToggle",
+        "esri/widgets/Search",
+        "esri/widgets/LayerList",
+        "esri/widgets/LayerList/LayerListViewModel",
+        "esri/widgets/Home",
+        "esri/widgets/Legend",
+        "esri/widgets/Print"
+      ], function(
+        esriConfig,
+        Map,
+        MapView,
+        TileLayer,
+        FeatureLayer,
+        Measurement,
+        Expand,
+        BasemapGallery,
+        BasemapToggle,
+        Search,
+        LayerList,
+        LayerListVM,
+        Home,
+        Legend,
+        Print
+      ) {
+          {
+        esriConfig.portalUrl = "https://maps.trpa.org/portal";
+            };
+                
+        // create the map instance
+        var map = new Map({
+            basemap: "topo"
+            });
+          
+        var view = new MapView({
+              map: map,  // The WebMap instance created above
+              container: "viewDiv",
+              center: [-120.01,39.05],
+              zoom: 10
+            });
+        
+        // 1940 aerial image tile layer
+        var layer1940 = new TileLayer({
+          url: "https://maps.trpa.org/server/rest/services/1940_Imagery/MapServer",
+          title : "1940",
+          visible: true
+        }); 
+          
+        // parcel feature layer
+        var layerParcels = new FeatureLayer({
+          url: "https://maps.trpa.org/server/rest/services/Parcels/MapServer/0",
+          title : "Parcels",
+          visible: true
+        });
+          
+        // zoning feature layer
+        var layerZoning = new FeatureLayer({
+          url: "https://maps.trpa.org/server/rest/services/Zoning/MapServer",
+          title : "Zoning",
+          visible: true
+        }); 
+        
+        map.add(layer1940);
+        map.add(layerZoning)
+        map.add(layerParcels);
+        
+
+        // add the toolbar for the measurement widgets
+        view.ui.add("toolbarDiv", "bottom-right");
+        
+        // Create new instance of the Measurement widget
+        const measurement = new Measurement();
+
+        const distanceButton = document.getElementById("distance");
+        const areaButton = document.getElementById("area");
+        const clearButton = document.getElementById("clear");
+        
+          
+        distanceButton.addEventListener("click", function() {
+          distanceMeasurement();
+        });
+        areaButton.addEventListener("click", function() {
+          areaMeasurement();
+        });
+        clearButton.addEventListener("click", function() {
+          clearMeasurements();
+        });
+
+        // Call the loadView() function for the initial view
+        loadView();
+
+        // The loadView() function to define the view for the widgets and div
+        function loadView() {
+          view.set({
+            container: "viewDiv"
+          });
+          // Add the appropriate measurement UI to the bottom-right when activated
+          view.ui.add(measurement, "bottom-right");
+          // Set the views for the widgets
+          measurement.view = view;
+        }
+
+        // Call the appropriate DistanceMeasurement2D
+        function distanceMeasurement() {
+          const type = view.type;
+          measurement.activeTool =
+            type.toUpperCase() === "2D" ? "distance" : "direct-line";
+          distanceButton.classList.add("active");
+          areaButton.classList.remove("active");
+        }
+
+        // Call the appropriate AreaMeasurement2D
+        function areaMeasurement() {
+          measurement.activeTool = "area";
+          distanceButton.classList.remove("active");
+          areaButton.classList.add("active");
+        }
+
+        // Clears all measurements
+        function clearMeasurements() {
+          distanceButton.classList.remove("active");
+          areaButton.classList.remove("active");
+          measurement.clear();
+        }
+          
+        // Add a legend instance to the panel of a
+        // ListItem in a LayerList instance
+        const layerList = new LayerList({
+              view: view,
+              listItemCreatedFunction: function(event) {
+                const item = event.item;
+                if (item.layer.type != "group") {
+                  // don't show legend twice
+                  item.panel = {
+                    content: "legend",
+                    open: false
+                  };
+                }
+              }
+        });
+            
+        view.ui.add(layerList, "top-right");
+
+        // Create collapasable button for Table of Contents
+        var layerListExpand = new Expand({
+                expandIconClass: "esri-icon-layers",  // see https://developers.arcgis.com/javascript/latest/guide/esri-icon-font/
+                expandTooltip: "Layer List",
+                view: view,
+                autoCollapse: true,
+                content: layerList.domNode
+            });
+
+        // add layer list button to the top right corner of the view
+        view.ui.add(layerListExpand, "top-right");
+
+        // function to create print service
+        view.when(function() {
+            var print = new Print({
+                container: document.createElement("div"),
+                view: view,
+                // specify print service url
+                printServiceUrl:"https://utility.arcgisonline.com/arcgis/rest/services/Utilities/PrintingTools/GPServer/Export%20Web%20Map%20Task"
+        });
+
+           
+            // Create Print Button
+            var printExpand = new Expand({
+                expandIconClass: "esri-icon-printer",  // see https://developers.arcgis.com/javascript/latest/guide/esri-icon-font/
+                expandTooltip: "Print",
+                view: view,
+                autoCollapse: true,
+                content: print.domNode
+                });
+
+            // Add print widget to the top right corner of the view
+            view.ui.add(printExpand, "top-right");
+            });
+            
+            var parcels = new FeatureLayer({
+                url: "https://maps.trpa.org/server/rest/services/Parcels/MapServer/0",
+//                popupTemplate: {
+//                // autocasts as new PopupTemplate()
+//                    title: "Parcel: {APN}",
+//                    overwriteActions: false
+//                }
+            });
+        
+            // Create Search Widget
+            var searchWidget = new Search({
+              view: view,
+              allPlaceholder: "Address or APN",
+              locationEnabled: false,
+              includeDefaultSources: false,
+              popupEnabled: false,
+              sources: [
+                {
+                  layer: parcels,
+                  searchFields: ["APO_ADDRESS"],
+                  displayField: "APO_ADDRESS",
+                  exactMatch: false,
+                  outFields: ["APO_ADDRESS"],
+                  name: "Address",
+                  zoomScale: 24000,
+                },
+                {
+                  layer: parcels,
+                  searchFields: ["APN"],
+                  displayField: "APN",
+                  exactMatch: false,
+                  outFields: ["APN"],
+                  name: "APN",
+                  zoomScale: 24000,
+                }
+              ]
+            });
+            
+            // Add the search widget to the top left corner of the view
+            view.ui.add(searchWidget, {
+                position: "top-left"
+            });
+            
+            // move zoom buttons to top left
+            view.ui.move("zoom", "top-left");
+                
+            // Createa Home Button
+            var homeWidget = new Home({
+                view: view
+            });
+            
+            // adds the home widget to the top left corner of the MapView
+            view.ui.add(homeWidget, "top-left");            
+
+            var basemapToggle = new BasemapToggle({
+                container: document.createElement("div"),
+                view: view,
+                nextBasemap: "hybrid"  // Allows for toggling to the "hybrid" basemap
+            });
+            
+            // Create an Expand instance and set the content
+            // property to the DOM node of the basemap gallery widget
+            var bgExpand = new Expand({
+                expandIconClass: "esri-icon-basemap",  // see https://developers.arcgis.com/javascript/latest/guide/esri-icon-font
+                expandTooltip: "Toggle Basemap",
+                view: view,
+                content: basemapToggle.domNode
+            });
+
+            // Add the basemap gallery button
+            view.ui.add(bgExpand, "bottom-left"); 
+                    
+            // add a legend widget instance to the view
+            // and set the style to 'card'. This is a
+            // responsive style, which is good for mobile devices
+            // or 'classic' for PC users
+            const legend = new Expand({
+                expandIconClass: "esri-icon-layer-list",  // see https://developers.arcgis.com/javascript/latest/guide/esri-icon-font
+                expandTooltip: "Legend",
+                content: new Legend({
+                    view: view,
+                    style: "classic" // other styles include 'card'
+                    }),
+                view: view,
+                expanded: false
+            });
+            view.ui.add(legend, "bottom-left");
+            
+      });
+        
+	</script>
+		  <!-- Global site tag (gtag.js) - Google Analytics -->
+	<script async src="https://www.googletagmanager.com/gtag/js?id=UA-72607582-23"></script>
+	<script>
+	  window.dataLayer = window.dataLayer || [];
+	  function gtag(){dataLayer.push(arguments);}
+	  gtag('js', new Date());
+
+	  gtag('config', 'UA-72607582-23');
+	</script>
+  </head>
+  <body>
+    <div id="viewDiv"></div>
+    <div id="toolbarDiv" class="esri-component esri-widget">
+      <button
+        id="distance"
+        class="esri-widget--button esri-interactive esri-icon-measure-line"
+        title="Distance Measurement Tool"
+      ></button>
+      <button
+        id="area"
+        class="esri-widget--button esri-interactive esri-icon-measure-area"
+        title="Area Measurement Tool"
+      ></button>
+      <button
+        id="clear"
+        class="esri-widget--button esri-interactive esri-icon-trash"
+        title="Clear Measurements"
+      ></button>
+    </div>
+  </body>
+</html>
