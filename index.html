@@ -4,328 +4,17 @@
     <meta charset="utf-8" />
     <meta
       name="viewport"
-      content="initial-scale=1, maximum-scale=1,user-scalable=no"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
     />
-    <title>Zoning District - Related Uses</title>
-
-    <style>
-      html,
-      body {
-        height: 100%;
-        width: 100%;
-        margin: 0;
-        padding: 0;
-      }
-      #gridDiv {
-        padding: 10px;
-        max-width: 600px;
-      }
-      #viewDiv {
-        height: 100%;
-        width: 100%;
-      }
-      #clearButton {
-        margin-top: 5px;
-        display: none;
-      }
-      
-      .table-expand{
-            width: 550px;
-        }
-      
-      .dgrid {
-        height: auto !important;
-      }
-      .dgrid .dgrid-scroller {
-        position: relative;
-        max-height: 200px;
-        overflow: auto;
-      }
-       
-      #landuse-filter {
-        height: 160px;
-        width: 100%;
-        visibility: hidden;
-      }
-
-      .landuse-item {
-        width: 100%;
-        padding: 12px;
-        text-align: center;
-        vertical-align: baseline;
-        cursor: pointer;
-        height: 40px;
-      }
-
-      .landuse-item:focus {
-        background-color: dimgrey;
-      }
-
-      .landuse-item:hover {
-        background-color: dimgrey;
-      }
-    </style>
-
-    <link
-      rel="stylesheet"
-      href="https://js.arcgis.com/4.14/esri/themes/light/main.css"
-    />
+    <title>Tahoe Land Use</title>
+ 
+    <link href="assets/favicon.ico" rel="icon" >
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/4.14/esri/themes/light/main.css">
     <script src="https://js.arcgis.com/4.14/"></script>
-
-    <script>
-      require([
-        "esri/config",
-        "esri/layers/support/LabelClass",
-        "esri/Map",
-        "esri/Basemap",
-        "esri/views/MapView",
-        "esri/layers/FeatureLayer",
-        "esri/widgets/Legend",
-        "esri/widgets/Expand",
-        "dgrid/Grid"
-      ], function(esriConfig, LabelClass, Map, Basemap, MapView, FeatureLayer, Legend, Expand, Grid) {
-          
-                  {
-        esriConfig.portalUrl = "https://maps.trpa.org/portal";
-            };
-   
-        // Initialize variables
-        let parcelLayerView;
-        
-        // land use layer
-        const landuseLayer = new FeatureLayer({
-            url: "https://maps.trpa.org/server/rest/services/Verify_Existing_Land_Use/FeatureServer",
-            outFields: ["TRPA_LANDUSE_DESCRIPTION"]
-        });
-               
-        // Create the layer
-        const zoningLayer = new FeatureLayer({
-            url:
-            "https://maps.trpa.org/server/rest/services/Zoning/MapServer"
-          ,
-            outFields: ["*"]
-        });
-        
-        const zoneLabelClass = new LabelClass({
-              labelExpressionInfo: { expression: "$feature.ZONING_DESCRIPTION" },
-              symbol: {
-                type: "text",  // autocasts as new TextSymbol()
-                color: "black",
-                haloSize: 1,
-                haloColor: "white",
-            font: {  // autocast as new Font()
-               family: "Ubuntu Light",
-               size: 10,
-               style: "italic"
-             }
-              },
-            labelPlacement: "center-center",
-            minScale: 10000
-            });
-
-          zoningLayer.labelingInfo = [ zoneLabelClass ];
-
-//        // Setup the map
-//        const basemap = new Basemap({
-//          portalItem: {
-//            id: "00c8181753cd4673810a1ede1f52a922"
-//          }
-//        });
-          
-        const map = new Map({
-          basemap: "topo",
-          layers: [landuseLayer]
-        });
-          
-        map.add(zoningLayer);
-        
-        const view = new MapView({
-          container: "viewDiv",
-          map: map,
-          center: [-120.01,39.05],
-          zoom: 10,
-          popup: {
-            autoOpenEnabled: false
-          }
-        });
-
-        const legend = new Legend({ view: view });
-        // Expand widget to expand and contract the legend widget
-        const legendExpand = new Expand({
-          expandTooltip: "Show Legend",
-          expanded: false,
-          view: view,
-          content: legend
-        });
-          
-        const gridExpand = new Expand({
-          expandTooltip: "Show Zoning",
-          expanded: false,
-          view: view,
-          content: document.getElementById("gridDiv"),
-          expandIconClass: "esri-icon-table"
-        });
-
-        // Add widgets to the view
-        view.ui.add(legendExpand, "top-right");
-        view.ui.add(gridExpand, "bottom-left");
-
-        // Initialize variables
-        let highlight, grid;
-
-        // call clearMap method when clear is clicked
-        const clearbutton = document.getElementById("clearButton");
-        clearbutton.addEventListener("click", clearMap);
-
-        zoningLayer.load().then(function() {
-          return createGrid().then(function(g) {
-            grid = g;
-          });
-        });
-
-        view.on("click", function(event) {
-          clearMap();
-          queryFeatures(event);
-        });
-
-        function queryFeatures(screenPoint) {
-          const point = view.toMap(screenPoint);
-
-          // Query the layer for the feature ids where the user clicked
-          zoningLayer
-            .queryObjectIds({
-              geometry: point,
-              spatialRelationship: "intersects",
-              returnGeometry: false,
-              outFields: ["*"]
-            })
-
-            .then(function(objectIds) {
-              if (!objectIds.length) {
-                return;
-              }
-
-              // Highlight the area returned from the first query
-              view.whenLayerView(zoningLayer).then(function(layerView) {
-                if (highlight) {
-                  highlight.remove();
-                }
-                highlight = layerView.highlight(objectIds);
-              });
-
-              // Query the for the related features for the features ids found
-              return zoningLayer.queryRelatedFeatures({
-                outFields: ["Category", "Use_Type", "Density", "Unit", "Notes"],
-                relationshipId: zoningLayer.relationships[0].id,
-                objectIds: objectIds
-              });
-            })
-
-            .then(function(relatedFeatureSetByObjectId) {
-              if (!relatedFeatureSetByObjectId) {
-                return;
-              }
-              // Create a grid with the data
-              Object.keys(relatedFeatureSetByObjectId).forEach(function(
-                objectId
-              ) {
-                // get the attributes of the FeatureSet
-                const relatedFeatureSet = relatedFeatureSetByObjectId[objectId];
-                const rows = relatedFeatureSet.features.map(function(feature) {
-                  return feature.attributes;
-                });
-
-                if (!rows.length) {
-                  return;
-                }
-
-                // create a new div for the grid of related features
-                // append to queryResults div inside of the gridDiv
-                const gridDiv = document.createElement("div");
-                const results = document.getElementById("queryResults");
-                results.appendChild(gridDiv);
-
-                // destroy current grid if exists
-                if (grid) {
-                  grid.destroy();
-                }
-                // create new grid to hold the results of the query
-                grid = new Grid(
-                  {
-                    columns: {
-                        Category: "Category",
-                        Use_Type: "Use",
-                        Density: "Density",
-                        Unit: "Unit",
-                        Notes: "Notes"
-                        }
-                  },
-                  gridDiv
-                );
-
-                // add the data to the grid
-                grid.renderArray(rows);
-              });
-              clearbutton.style.display = "inline";
-            })
-            .catch(function(error) {
-              console.error(error);
-            });
-        }
-
-        function clearMap() {
-          if (highlight) {
-            highlight.remove();
-          }
-          if (grid) {
-            grid.destroy();
-          }
-          clearbutton.style.display = "none";
-        }       
-        const landuseNodes = document.querySelectorAll(`.landuse-item`);
-        const landuseElement = document.getElementById("landuse-filter");
-
-        // click event handler for landuse choices
-        landuseElement.addEventListener("click", filterByLandUse);
-
-        // User clicked on landuse to set an attribute filter
-        function filterByLandUse(event) {
-          const selectedLanduse = event.target.getAttribute("data-landuse");
-          parcelLayerView.filter = {
-            where: "TRPA_LANDUSE_DESCRIPTION" + selectedLanduse
-          };
-        }
-        
-        // after land use layer loads create the widget
-        view.whenLayerView(landuseLayer).then(function(layerView) {
-          // land use layer loaded
-          // get a reference to the land use layerview
-          parcelLayerView = layerView;
-
-        // set up UI items
-        landuseElement.style.visibility = "visible";
-        
-        const landuseExpand = new Expand({
-            view: view,
-            content: landuseElement,
-            expandIconClass: "esri-icon-filter",
-            group: "top-left"
-          });
-        
-        //clear the filters when user closes the expand widget
-        landuseExpand.watch("expanded", function() {
-            if (!landuseExpand.expanded) {
-              parcelLayerView.filter = null;
-            }
-          });
-        view.ui.add(landuseExpand, "top-left");
-        });
-      }); 
-    </script>
+    <script src="js/main.js"></script>
   </head>
-
   <body>
-
     <div id="viewDiv"></div>
     <div id="landuse-filter" class="esri-widget">
       <div class="landuse-item visible-landuse" data-landuse= " = 'Vacant'">Vacant</div>
@@ -334,13 +23,23 @@
       <div class="landuse-item visible-landuse" data-landuse= " IN ('Open Space', 'Recreation', 'Public Service')">Public</div>
     </div>
     <div id="gridDiv" class="esri-widget table-expand">
-      <h2>Zoning</h2>
-      <p>
-        Click on a zoning district to see the allowed uses.
-      </p>
+      <p>Click on a Zoning District to see the Allowed Uses</p>
       <div id="queryResults"></div>
-      <button id="clearButton" class="esri-widget">Clear Query</button>
+      <button id="clearButton" class="esri-widget">Clear</button>
     </div>
-    <div id="viewDiv"></div>
+      <div class="overlay-wrap">
+		<input type="checkbox" name="hide" id="hide">
+		<label class="hide" for="hide">X</label>
+		  <div class="overlay2">
+              <div class="overlay">
+                <div class="overlay-inner">
+                  <div class="message">
+                      <p><h2>Tahoe Land Use</h2></p> 
+                      <p>Use this application to <b>VISUALIZE</b> layers related to land use, <b>SEARCH</b> for a parcel, <b>EDIT</b> it's land use, <b>FILTER</b> land use displayed in the map, <b>QUERY</b> allowed uses by zoning district, <b>LOCATE</b> where you are, <b>TRACK</b> where you've been, and <b>PRINT</b> a map.</p>
+                  </div>
+                </div>
+            </div>
+        </div>
+    </div>
   </body>
 </html>
