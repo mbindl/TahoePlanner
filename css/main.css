@@ -18,7 +18,6 @@
       }
 */
 
-
         #infoDiv {
             position: absolute;
             top: 15px;
@@ -85,20 +84,20 @@
             align-content: center;
         }
         .message {
-            border:2px solid #6e6e6e;
+/*            border:1px solid #6e6e6e;*/
             border-radius: 4px;
-            background: #fff;
+            background: rgba(102,128,168, 0.6);
             display:inline-block;
             vertical-align:middle;
             width:50%;
             text-align:center;
             font-family: "Avenir Next W00";
-            color: #6e6e6e;
+            color: #f9f9f9;
             padding:10px;
         }
 
         .active {
-            background: #999696;
+            background: #6680a8;
             color: #4c4c4c;
 
         }
@@ -115,14 +114,14 @@
             position:absolute;
             top:-999em;
             right:20px;
-            border:1px solid #6e6e6e;
+/*            border:1px solid #6e6e6e;*/
             border-radius: 2px;
-            background: #fff;
+            background: rgba(102,128,168, 0.6);
             display:inline-block;
             text-align:middle;
             font-family: "Avenir Next W00";
             opacity:0;
-            color:#6e6e6e;
+            color:#f9f9f9;
             padding:2px;
             font-size:100%;
             z-index:2;
