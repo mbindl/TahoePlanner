@@ -73,7 +73,7 @@
 
         var webmap = new WebMap({
               portalItem: { // autocasts as new PortalItem()
-                id: "050cb95e85f941b8891eb538fe23328a"
+                id: "6a14f61215fe4fb19e85687d0a8beb36"
               }
             });
         // Create a popupTemplate for the land use layer and pass in a function to set its content and specify an action to handle editing the selected feature
@@ -131,7 +131,7 @@
         // construct parcel land use layer from portal item
         const parcels = new FeatureLayer({
           portalItem: {
-            id: "d3a8d3aaf5c3421bb4653bb96ee6c49c"
+            id: "1cd178998be440c2852f2a406fbede6a"
           },
           title: "Parcels",
           outFields: ["*"],
