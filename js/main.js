@@ -21,6 +21,7 @@
         "esri/Graphic",
         "esri/layers/support/LabelClass",
         "esri/geometry/SpatialReference",
+        "dgrid/Grid",
         "dgrid/OnDemandGrid",
         "dgrid/extensions/ColumnHider",
         "dojo/store/Memory",
@@ -50,6 +51,7 @@
         Graphic,
         LabelClass,
         SpatialReference,
+        Grid,
         OnDemandGrid, 
         ColumnHider, 
         Memory, 
@@ -61,7 +63,7 @@
         esriConfig.portalUrl = "https://maps.trpa.org/portal/";
             };
         // Initialize variables
-        let highlight, features, parcelLayerView, grid;
+        let highlight, features, parcelLayerView, grid, grid2;
         
         const gridDiv = document.getElementById("grid");
         const infoDiv = document.getElementById("info");
@@ -275,7 +277,7 @@
                   // don't show legend twice
                   item.panel = {
                     content: "legend",
-                    open: true
+                    open: false
                   };
                 }
               }
@@ -495,7 +497,7 @@
           view: view,
           content: document.getElementById("gridDiv"),
           expandIconClass: "esri-icon-table",
-          group: "bottom-left"
+          group: "bottom-right"
         });  
 
         // Add grid expand to the view
@@ -596,5 +598,158 @@
           
         // add leged exapnd to ui
         view.ui.add(legend, "top-right");
-      
+     // Create the zoning layer
+        const zoningLayer = new FeatureLayer({
+            url:
+            "https://maps.trpa.org/server/rest/services/Zoning/MapServer"
+          ,
+            outFields: ["*"]
+        });
+          
+        webmap.add(zoningLayer);
+        
+        zoningLayer.visible = false;
+        
+        const zoneLabelClass = new LabelClass({
+              labelExpressionInfo: { expression: "$feature.ZONING_DESCRIPTION" },
+              symbol: {
+                type: "text",  // autocasts as new TextSymbol()
+                color: "black",
+                haloSize: 1,
+                haloColor: "white",
+            font: {  // autocast as new Font()
+               family: "Ubuntu Light",
+               size: 10,
+               style: "italic"
+             }
+              },
+            labelPlacement: "center-center",
+            minScale: 10000
+            });
+
+          zoningLayer.labelingInfo = [ zoneLabelClass ];
+          
+        const gridExpand2 = new Expand({
+          expandTooltip: "Show Zoning",
+          expanded: false,
+          view: view,
+          content: document.getElementById("gridDiv2"),
+          expandIconClass: "esri-icon-table",
+          group: "bottom-left"
+        });
+
+        // Add grid expand to the view
+        view.ui.add(gridExpand2, "bottom-right");
+
+
+        // call clearMap method when clear is clicked
+        const clearbutton = document.getElementById("clearButton");
+        clearbutton.addEventListener("click", clearMap);
+
+        zoningLayer.load().then(function() {
+          return createGrid().then(function(g) {
+            grid2 = g;
+          });
+        });
+
+        view.on("click", function(event) {
+          clearMap();
+          queryFeatures(event);
+        });
+
+        function queryFeatures(screenPoint) {
+          const point = view.toMap(screenPoint);
+
+          // Query the layer for the feature ids where the user clicked
+          zoningLayer
+            .queryObjectIds({
+              geometry: point,
+              spatialRelationship: "intersects",
+              returnGeometry: false,
+              outFields: ["*"]
+            })
+
+            .then(function(objectIds) {
+              if (!objectIds.length) {
+                return;
+              }
+
+              // Highlight the area returned from the first query
+              view.whenLayerView(zoningLayer).then(function(layerView) {
+                if (highlight) {
+                  highlight.remove();
+                }
+                highlight = layerView.highlight(objectIds);
+              });
+
+              // Query the for the related features for the features ids found
+              return zoningLayer.queryRelatedFeatures({
+                outFields: ["Category", "Use_Type", "Density", "Unit", "Notes"],
+                relationshipId: zoningLayer.relationships[0].id,
+                objectIds: objectIds
+              });
+            })
+
+            .then(function(relatedFeatureSetByObjectId) {
+              if (!relatedFeatureSetByObjectId) {
+                return;
+              }
+              // Create a grid with the data
+              Object.keys(relatedFeatureSetByObjectId).forEach(function(
+                objectId
+              ) {
+                // get the attributes of the FeatureSet
+                const relatedFeatureSet = relatedFeatureSetByObjectId[objectId];
+                const rows = relatedFeatureSet.features.map(function(feature) {
+                  return feature.attributes;
+                });
+
+                if (!rows.length) {
+                  return;
+                }
+
+                // create a new div for the grid of related features
+                // append to queryResults div inside of the gridDiv
+                const gridDiv2 = document.createElement("div");
+                const results = document.getElementById("queryResults");
+                results.appendChild(gridDiv2);
+
+                // destroy current grid if exists
+                if (grid2) {
+                  grid2.destroy();
+                }
+                // create new grid to hold the results of the query
+                grid2 = new Grid(
+                  {
+                    columns: {
+                        Category: "Category",
+                        Use_Type: "Use",
+                        Density: "Density",
+                        Unit: "Unit",
+                        Notes: "Notes"
+                        }
+                  },
+                  gridDiv2
+                );
+
+                // add the data to the grid
+                grid2.renderArray(rows);
+              });
+              clearbutton.style.display = "inline";
+            })
+            .catch(function(error) {
+              console.error(error);
+            });
+        }
+
+        function clearMap() {
+          if (highlight) {
+            highlight.remove();
+          }
+          if (grid2) {
+            grid2.destroy();
+          }
+          clearbutton.style.display = "none";
+        }   
+          
       });
