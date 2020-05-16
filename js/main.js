@@ -271,6 +271,7 @@
         // ListItem in a LayerList instance
         const layerList = new LayerList({
               view: view,
+              selectionEnabled: true,
               listItemCreatedFunction: function(event) {
                 const item = event.item;
                 if (item.layer.type != "group") {
@@ -603,12 +604,13 @@
             url:
             "https://maps.trpa.org/server/rest/services/Zoning/MapServer"
           ,
-            outFields: ["*"]
+            outFields: ["*"],
+            minScale: 20000
         });
           
         webmap.add(zoningLayer);
         
-        zoningLayer.visible = false;
+        zoningLayer.visible = true;
         
         const zoneLabelClass = new LabelClass({
               labelExpressionInfo: { expression: "$feature.ZONING_DESCRIPTION" },
@@ -624,7 +626,7 @@
              }
               },
             labelPlacement: "center-center",
-            minScale: 10000
+            minScale: 20000
             });
 
           zoningLayer.labelingInfo = [ zoneLabelClass ];
@@ -641,11 +643,6 @@
         // Add grid expand to the view
         view.ui.add(gridExpand2, "bottom-right");
 
-
-        // call clearMap method when clear is clicked
-        const clearbutton = document.getElementById("clearButton");
-        clearbutton.addEventListener("click", clearMap);
-
         zoningLayer.load().then(function() {
           return createGrid().then(function(g) {
             grid2 = g;
@@ -660,7 +657,7 @@
         function queryFeatures(screenPoint) {
           const point = view.toMap(screenPoint);
 
-          // Query the layer for the feature ids where the user clicked
+          // Query the layer for the feature ids where the user clicks
           zoningLayer
             .queryObjectIds({
               geometry: point,
@@ -682,7 +679,7 @@
                 highlight = layerView.highlight(objectIds);
               });
 
-              // Query the for the related features for the features ids found
+              // Query the table for the related features for the features ids found
               return zoningLayer.queryRelatedFeatures({
                 outFields: ["Category", "Use_Type", "Density", "Unit", "Notes"],
                 relationshipId: zoningLayer.relationships[0].id,
@@ -713,7 +710,18 @@
                 const gridDiv2 = document.createElement("div");
                 const results = document.getElementById("queryResults");
                 results.appendChild(gridDiv2);
-
+                 
+                // Search for graphics attributes at the clicked location to display the name of the zoning district and number of premissible uses
+                view.hitTest(screenPoint).then(function (response) {
+                    if (response.results.length) {
+                    var graphic = response.results.filter(function (result) {
+                    // check if the graphic belongs to the layer of interest
+                    return result.graphic.layer === zoningLayer;
+                    })[0].graphic;
+                    // create the title with the number of features and name of zone
+                    document.getElementById("districtName").innerHTML = "Showing <b>" + rows.length.toString() + "</b> permissible uses for the <b>" + graphic.attributes.ZONING_DESCRIPTION + "</b> zoning district."
+                }
+                })      
                 // destroy current grid if exists
                 if (grid2) {
                   grid2.destroy();
@@ -735,7 +743,6 @@
                 // add the data to the grid
                 grid2.renderArray(rows);
               });
-              clearbutton.style.display = "inline";
             })
             .catch(function(error) {
               console.error(error);
@@ -749,7 +756,6 @@
           if (grid2) {
             grid2.destroy();
           }
-          clearbutton.style.display = "none";
         }   
           
       });
